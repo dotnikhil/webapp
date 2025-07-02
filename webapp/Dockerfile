@@ -11,7 +11,7 @@ COPY . .
 RUN dotnet build webapp.csproj -o ./build
 
 FROM build as publish
-RUN dotnet publish webapp.csproj -c Release -o ./publish/p:UseAppHost=false
+RUN dotnet publish webapp.csproj -c Release -o ./publish /p:UseAppHost=false
 
 FROM base as final
 COPY --from=publish /src/publish .
