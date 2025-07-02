@@ -24,6 +24,7 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
-builder.WebHost.UseUrls("http://*:8081");
+app.Urls.Add("http://*:8081");
+
 
 app.Run();
