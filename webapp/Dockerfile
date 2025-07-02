@@ -14,5 +14,6 @@ FROM build as publish
 RUN dotnet publish webapp.csproj -c Release -o ./publish /p:UseAppHost=false
 
 FROM base as final
+ENV ASPNETCORE_URLS=http://*:8081
 COPY --from=publish /src/publish .
 ENTRYPOINT ["dotnet", "webapp.dll"]
