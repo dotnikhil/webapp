@@ -29,7 +29,7 @@ spec:
   ports:
     - port: 8082
       targetPort: 8081
-      nodePort: 5555
+      nodePort: 30006
   selector:
     app: mypodtemplate1
 
