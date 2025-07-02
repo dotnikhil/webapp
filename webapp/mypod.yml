@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: con1
-          image: nikhildocker4424/webapp1:1
+          image: nikhildocker4424/webapp:1
           ports:
             - containerPort: 8081
             
