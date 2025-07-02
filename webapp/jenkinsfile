@@ -1,0 +1,44 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('git checkout') {
+            steps {
+                git 'https://github.com/dotnikhil/webapp.git'
+                echo 'cloned the git repo'
+            }
+        }
+        stage('docker login') {
+            steps {
+                withCredentials([string(credentialsId: 'dockerhubpass', variable: 'dockerhubpass')]) {
+                    sh "docker login -u nikhildocker4424 -p $dockerhubpass"
+                }
+                echo 'logged into dockerhub'
+            }
+        }
+        stage('building image') {
+            steps {
+                echo 'building image'
+                sh "docker build -t nikhildocker4424/webapp:1 ./webapp"
+            }
+        }
+        stage('pushing image') {
+            steps {
+                echo 'pushing image to dockerhub'
+                sh "docker push nikhildocker4424/webapp:1"
+            }
+        }
+        stage('k8s EKS Cluster') {
+            environment {
+                KUBECONFIG = '/home/config'
+            }
+            steps {
+                echo 'deploying pods'
+                sh 'kubectl apply -f webapp/mypod.yml'
+                sh 'kubectl get pods -o wide'
+               
+            }
+        }
+       
+    }  
+}
