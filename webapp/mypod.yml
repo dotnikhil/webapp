@@ -1,0 +1,36 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: mypod1
+  namespace: test
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: mypodtemplate1
+template:
+  metadata:
+    labels:
+      app: mypodtemplate1
+  spec:
+    containers:
+      name: con1
+      image: nikhildocker4424/webapp1:1
+      ports:
+            - containerPort: 8081
+            
+---
+
+kind: Service
+apiVersion: v1
+metadata:
+  name: mypodservice1
+  namespace: test
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8082
+      targetPort: 8081
+  selector:
+    app: mypodtemplate1
+
