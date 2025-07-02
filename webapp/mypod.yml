@@ -25,10 +25,11 @@ apiVersion: v1
 metadata:
   name: mypodservice1
 spec:
-  type: LoadBalancer
+  type: NodePort
   ports:
     - port: 8082
       targetPort: 8081
+      nodePort: 30001
   selector:
     app: mypodtemplate1
 
