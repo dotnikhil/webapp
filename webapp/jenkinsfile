@@ -2,6 +2,8 @@ pipeline {
     agent any
     environment {
         SONAR_SCANNER = '/var/lib/jenkins/tools/hudson.plugins.sonar.SonarRunnerInstallation/sonarqube/bin/sonar-scanner' 
+        SONAR_IP = 'http://107.20.29.195:9000/'
+        IMAGE = 'nikhildocker4424/webapp:1'
     }
     stages {
         stage('git checkout') {
@@ -20,7 +22,7 @@ pipeline {
                                 -D sonar.projectVersion=v3 \
                                 -D sonar.token=${SONAR_TOKEN} \
                                 -D sonar.projectKey=webapp \
-                                -D sonar.host.url=http://107.20.29.195:9000/"""
+                                -D sonar.host.url=${SONAR_IP}"""
                         }
                     }
                 }
@@ -37,7 +39,7 @@ pipeline {
         stage('building image') {
             steps {
                 echo 'Building image'
-                sh "docker build -t nikhildocker4424/webapp:1 ./webapp"
+                sh "docker build -t $IMAGE ./webapp"
             }
         }
         stage('Trivy image scanning') {
@@ -50,7 +52,7 @@ pipeline {
                 def result = sh(script: """
                     docker run --rm aquasec/trivy:latest \
                     image -f json \
-                    nikhildocker4424/webapp:1 > trivy_scan_results.json
+                    $IMAGE > trivy_scan_results.json
                 """, returnStatus: true)
 
                 sh 'cat trivy_scan_results.json'
@@ -64,7 +66,7 @@ pipeline {
         stage('pushing image') {
             steps {
                 echo 'Pushing image to DockerHub'
-                sh "docker push nikhildocker4424/webapp:1"
+                sh "docker push $IMAGE"
             }
         }
         stage('k8s EKS Cluster') {
