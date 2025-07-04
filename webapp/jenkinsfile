@@ -1,11 +1,29 @@
 pipeline {
     agent any
-
+    environment {
+        SONAR_SCANNER = '/var/lib/jenkins/tools/hudson.plugins.sonar.SonarRunnerInstallation/sonarqube/bin/sonar-scanner' 
+    }
     stages {
         stage('git checkout') {
             steps {
                 git 'https://github.com/dotnikhil/webapp.git'
-                echo 'cloned the git repo'
+                echo 'Cloned the git repo'
+            }
+        }
+        stage('SonarQube Analysis') {
+            steps {
+                echo 'SonarQube Analysis'
+                script {
+                    withCredentials([string(credentialsId: 'sonartoken', variable: 'SONAR_TOKEN')]) {
+                        withSonarQubeEnv('sonarqube') {
+                            sh """${SONAR_SCANNER} \
+                                -D sonar.projectVersion=v3 \
+                                -D sonar.token=${SONAR_TOKEN} \
+                                -D sonar.projectKey=webapp \
+                                -D sonar.host.url=http://107.20.29.195:9000/"""
+                        }
+                    }
+                }
             }
         }
         stage('docker login') {
@@ -13,18 +31,39 @@ pipeline {
                 withCredentials([string(credentialsId: 'dockerhubpass', variable: 'dockerhubpass')]) {
                     sh "docker login -u nikhildocker4424 -p $dockerhubpass"
                 }
-                echo 'logged into dockerhub'
+                echo 'Logged into DockerHub'
             }
         }
         stage('building image') {
             steps {
-                echo 'building image'
+                echo 'Building image'
                 sh "docker build -t nikhildocker4424/webapp:1 ./webapp"
+            }
+        }
+        stage('Trivy image scanning') {
+            agent {
+                label 'trivy-agent'
+            }
+            steps {
+                echo 'Scanning Image with Trivy'
+                script {
+                def result = sh(script: """
+                    docker run --rm aquasec/trivy:latest \
+                    image -f json \
+                    nikhildocker4424/webapp:1 > trivy_scan_results.json
+                """, returnStatus: true)
+
+                sh 'cat trivy_scan_results.json'
+
+                if (result != 0) {
+                    error "Vulnerabilities found in Docker Image"
+                }
+                }
             }
         }
         stage('pushing image') {
             steps {
-                echo 'pushing image to dockerhub'
+                echo 'Pushing image to DockerHub'
                 sh "docker push nikhildocker4424/webapp:1"
             }
         }
@@ -33,12 +72,10 @@ pipeline {
                 KUBECONFIG = '/home/config'
             }
             steps {
-                echo 'deploying pods'
+                echo 'Deploying pods to EKS'
                 sh 'kubectl apply -f webapp/mypod.yml'
                 sh 'kubectl get pods -o wide'
-               
             }
         }
-       
-    }  
+    }
 }
