@@ -1,0 +1,83 @@
+pipeline {
+    agent any
+     environment {
+        AWS_ACCOUNT_ID = ''
+        AWS_REGION = 'us-east-1'
+        APP_PATH = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/cms_synergy_bls:algeriauat"
+        EKS_CLUSTER_NAME = 'my-cluster'
+        REMOTE_SERVER = '13.219.209.37'
+        USERNAME = ''
+    }
+    stages {
+        stage('git checkout') {
+            steps {
+                git 'https://github.com/dotnikhil/webapp.git'
+            }
+        }
+        stage('Build Docker Image for Deployemnt') {
+            steps {
+                script {
+                    sh "docker build -t ${APP_PATH} ./webapp"
+                }
+            }
+        }
+        stage('Login to AWS ECR'){
+            steps{
+                withAWS(credentials: 'AWS-cred', region: 'AWS_REGION') {
+                    script{
+                        sh "aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+                        echo "logged in to AWS ECR"
+                    }
+                }
+            }
+        }
+        stage('push docker images to ECR'){
+            steps{
+                script{
+                    sh "docker push ${APP_PATH}"
+                }
+            }
+        }
+        stage('clean up local docker images'){
+            steps {
+                script {
+                    sh "docker rmi ${APP_PATH}"
+                }
+            }
+        }
+        stage('Deploy to EKS Cluster') {
+            steps {
+                sshagent(['ProdServerCred']) { // Use the Jenkins credential ID for the SSH private key
+                    script {
+                        // SSH into the remote server and ensure both aws and kubectl are in the PATH
+                        sh """
+                          ssh -o StrictHostKeyChecking=no ${USERNAME}@${REMOTE_SERVER} \
+                              'set -e && \
+                              cd /home/synergydev/Synergy-Devops && \
+                              git stash && \
+                              git pull && \
+                              bash -c "export PATH=\$PATH:/usr/local/bin:/home/synergydev/bin && \
+                              aws eks update-kubeconfig --region ${AWS_REGION} --name ${EKS_CLUSTER_NAME} && \
+                              kubectl rollout restart deployment dz-uat-citizen-app-deployment && \
+                              kubectl get pods"'
+                        """
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo 'Cleaning up the workspace..'
+            cleanWs()
+            sh "docker logout ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazon.com"
+        }
+        success {
+            echo 'Deployment completed Successfully!'
+        }
+        failure {
+            echo 'Deployment failed!'
+        }
+    }
+}
