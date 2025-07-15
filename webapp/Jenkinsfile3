@@ -1,11 +1,11 @@
 pipeline {
     agent any
     environment {
-        AWS_ACCOUNT_ID = '496218138693'
+        AWS_ACCOUNT_ID = ''
         AWS_REGION = 'us-east-1'
         APP_PATH = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/webapp/webapp-img:1"
         EKS_CLUSTER_NAME = 'my-cluster'
-        REMOTE_SERVER = '172.31.13.83'
+        REMOTE_SERVER = '3.231.105.163'
         USERNAME = 'ubuntu'
     }
 
@@ -47,18 +47,20 @@ pipeline {
             }
         }
         stage('Deploy to EKS Cluster'){
-            sshagent(['ssh-cred']) {
-                script{
-                    sh """ 
-                        ssh -o StrictHostKeyChecking=no ${USERNAME}@${REMOTE_SERVER} \
-                            'set -e && \
-                            cd /home/webapp && \
-                            git stash && \
-                            git pull && \
-                            bash -c "export PATH=\$PATH:/usr/local/bin:/home/webapp && \
-                            aws eks update-kubeconfig --region ${AWS_REGION} --name ${EKS_CLUSTER_NAME} && \
-                            kubectl apply -f mypod.yml "'
-                    """
+            steps{
+                sshagent(['ssh-cred']) {
+                    script{
+                        sh """ 
+                            ssh -o StrictHostKeyChecking=no ${USERNAME}@${REMOTE_SERVER} \
+                                'set -e && \
+                                cd /home/webapp && \
+                                sudo git stash && \
+                                sudo git pull && \
+                                sudo bash -c "export PATH=\$PATH:/usr/local/bin:/home/webapp && \
+                                sudo aws eks update-kubeconfig --region ${AWS_REGION} --name ${EKS_CLUSTER_NAME} && \
+                                sudo kubectl apply -f webapp/mypod.yml "'
+                        """
+                    }
                 }
             }
         }
